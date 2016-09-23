@@ -13,16 +13,6 @@ class DatabaseTest(TestCase):
 
         self.user = User("test")
         db.session.add(self.user)
-        db.session.commit()
-
-    def tearDown(self):
-        db.session.remove()
-        db.drop_all()
-
-
-class TestMakeTurnCornerCases(DatabaseTest):
-    def setUp(self):
-        DatabaseTest.setUp(self)
 
         self.game = Game(["C0#1#0", "C1#1#0", "C2#1#0", "C0#1#1"], self.user, 3, 10, 4)
         self.game.users = [self.user]
@@ -31,7 +21,14 @@ class TestMakeTurnCornerCases(DatabaseTest):
         db.session.add(self.game)
         db.session.commit()
 
+        db.session.commit()
 
+    def tearDown(self):
+        db.session.remove()
+        db.drop_all()
+
+
+class TestMakeTurnCornerCases(DatabaseTest):
     def test_make_turn_no_game(self):
         # Game has to be set
         turn = Turn(None, None, None, 0)
