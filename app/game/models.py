@@ -57,7 +57,7 @@ class Game(db.Model):
     __tablename__ = "games"
 
     id = db.Column(db.Integer, primary_key=True)
-    _start_deck = db.Column(db.String(2000), nullable=False) # TODO: Length
+    _start_deck = db.Column(db.String(len(constants.COLORS) * 10 * 10), nullable=False)
     started = db.Column(db.DateTime, nullable=False, default=datetime.now())
     start_failures = db.Column(db.Integer, nullable=False)
     start_hints = db.Column(db.Integer, nullable=False)
@@ -77,6 +77,24 @@ class Game(db.Model):
     @staticmethod
     def card_can_generate_hint(card: Card) -> bool:
         return card.value == 5
+
+    def update_game_status(self):
+        # the users have lost when they made too many mistakes
+        if self.current_number_of_failures < 1:
+            self.state = constants.GAME_LOST
+            return True
+
+        not_finished_cards = filter(lambda value: value != 5, self.card_status.values())
+        if not not_finished_cards:
+            self.state = constants.GAME_WON
+            return True
+
+        turns_after_last_card = Turn.query.filter_by(game=self, last_card_drawn=True).count()
+        if turns_after_last_card > len(self.users):
+            self.state = constants.GAME_LOST
+            return True
+
+        return False
 
     def card_fits_good(self, card: Card) -> bool:
         card_status = self.card_status
@@ -104,14 +122,16 @@ class Game(db.Model):
                 assert len(turn.cards) == 1
 
                 del cards_of_user[cards_of_user.index(turn.cards[0])]
-                cards_of_user.append(start_deck[card_counter])
+
+                # here we allow the users o go on playing even if there are no more cards (which is possible)
+                if card_counter < len(start_deck):
+                    cards_of_user.append(start_deck[card_counter])
 
             card_counter += 1
 
             assert card_counter < len(start_deck)
 
         return cards_of_user
-
 
     def get_possible_turns(self, user: User) -> list(Turn):
         possible_turns = []
@@ -211,6 +231,13 @@ class Game(db.Model):
 
     @property
     def current_number_of_hints(self) -> int:
+        number_of_hints = self.start_failures
+        number_of_hints -= Turn.query.filter_by(game=self, type=constants.TURN_PUT, put_correct=False).count()
+
+        return number_of_hints
+
+    @property
+    def current_number_of_hints(self) -> int:
         number_of_hints = self.start_hints
         number_of_hints += Turn.query.filter_by(game=self, hint_restored=True).count()
         number_of_hints -= Turn.query.filter_by(game=self, type=constants.TURN_HINT).count()
@@ -261,13 +288,15 @@ class Turn(db.Model):
     game = db.relationship(Game, backref=db.backref("turns_in_game", uselist=True, cascade='delete,all'))
     turn_number = db.Column(db.Integer, nullable=False)
 
-    put_correct = db.Column(db.Boolean, nullable=False, default=True)
-    hint_restored = db.Column(db.Boolean, nullable=False, default=False)
     _card = db.Column(db.String(100), nullable=False)
     hint_type = db.Column(db.Integer, nullable=False, default=-1)
 
     _hint_user_id = db.Column(db.Integer, db.ForeignKey(User.id), nullable=True)
     hint_user = db.relationship(User, backref=db.backref("hints_given", uselist=True, cascade='delete,all'), foreign_keys=[_hint_user_id])
+
+    last_card_drawn = db.Column(db.Boolean, nullable=False, default=False)
+    put_correct = db.Column(db.Boolean, nullable=False, default=False)
+    hint_restored = db.Column(db.Boolean, nullable=False, default=False)
 
     def __init__(self, game, type):
         self.game = game
@@ -286,6 +315,10 @@ class Turn(db.Model):
 
     def set_turn_properties(self):
         game = self.game
+
+        if game.next_card is None:
+            self.last_card_drawn = True
+
         if self.type == constants.TURN_DESTROY:
             if game.current_number_of_hints < game.start_hints:
                 self.hint_restored = True

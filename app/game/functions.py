@@ -18,3 +18,9 @@ def make_turn(turn: Turn):
     turn.set_turn_properties()
 
     db.session.add(turn)
+    # TODO: Do we need a commit here?
+
+    game.update_game_status()
+    db.session.merge(game)
+
+    db.session.commit()
