@@ -42,6 +42,10 @@ class Card:
 
         return new_card
 
+    def __eq__(self, other):
+        return (self.value == other.value and self.color == other.color and
+                self.uniqueness_value == other.uniqueness_value)
+
 
 class User(db.Model):
     __tablename__ = 'users'
@@ -310,6 +314,8 @@ class Turn(db.Model):
 
     @property
     def cards(self):
+        if self._card is None:
+            return []
         return [Card.from_string(card) for card in self._card.split(",")]
 
     @cards.setter
