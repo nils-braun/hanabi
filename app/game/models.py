@@ -7,9 +7,9 @@ import app.game.constants as constants
 
 class Card:
     def __init__(self, color, value, uniqueness_value):
-        self.color = color
-        self.value = value
-        self.uniqueness_value = uniqueness_value
+        self.color = int(color)
+        self.value = int(value)
+        self.uniqueness_value = int(uniqueness_value)
 
         assert self.color in constants.COLORS
         assert self.value in constants.VALUES
@@ -35,9 +35,9 @@ class Card:
 
         assert regex_decomposition
 
-        value = regex_decomposition.group(1)
-        color = regex_decomposition.group(2)
-        uniqueness_value = regex_decomposition.group(2)
+        color = int(regex_decomposition.group(1))
+        value = int(regex_decomposition.group(2))
+        uniqueness_value = int(regex_decomposition.group(3))
         new_card = Card(color, value, uniqueness_value)
 
         return new_card
@@ -68,14 +68,15 @@ class Game(db.Model):
 
     state = db.Column(db.Integer(), nullable=False, default=-1)
 
-    def __init__(self, start_deck, start_player, start_failures, start_hints):
+    def __init__(self, start_deck, start_player, start_failures, start_hints, start_number_of_cards):
         self.start_deck = start_deck
         self.start_failures = start_failures
         self.start_hints = start_hints
         self.start_player = start_player
+        self.start_number_of_cards = start_number_of_cards
 
     @staticmethod
-    def card_can_generate_hint(card: Card) -> bool:
+    def card_can_generate_hint(card):
         return card.value == 5
 
     def update_game_status(self):
@@ -96,12 +97,12 @@ class Game(db.Model):
 
         return False
 
-    def card_fits_good(self, card: Card) -> bool:
+    def card_fits_good(self, card):
         card_status = self.card_status
 
         return card_status[card.color] == card.value - 1
 
-    def get_cards_of_user(self, user: User) -> list(Card):
+    def get_cards_of_user(self, user):
         start_deck = self.start_deck
         card_counter = 0
 
@@ -110,7 +111,7 @@ class Game(db.Model):
         # First, give the start cards to the user
         user_index = self.users.index(user)
         for counter in range(self.start_number_of_cards):
-            cards_of_user += start_deck[self.start_number_of_cards * counter + user_index]
+            cards_of_user.append(start_deck[len(self.users) * counter + user_index])
 
         card_counter += self.start_number_of_cards * len(self.users)
 
@@ -133,8 +134,10 @@ class Game(db.Model):
 
         return cards_of_user
 
-    def get_possible_turns(self, user: User) -> list(Turn):
+    def get_possible_turns(self, user):
         possible_turns = []
+
+        current_turn_number = self.current_turn_number
 
         # Making turns downs only make sense if the game is running
         if self.state != constants.GAME_STARTED:
@@ -145,12 +148,12 @@ class Game(db.Model):
         # Putting down cards is only possible for the cards the user owns
         # Destroying a card is only possible for the cards the user owns
         for card in self.get_cards_of_user(user):
-            put_turn = Turn(self, constants.TURN_PUT)
+            put_turn = Turn(self, user, constants.TURN_PUT, current_turn_number)
             put_turn.cards = card
 
             possible_turns.append(put_turn)
 
-            destroy_turn = Turn(self, constants.TURN_DESTROY)
+            destroy_turn = Turn(self, user, constants.TURN_DESTROY, current_turn_number)
             destroy_turn.cards = card
 
             possible_turns.append(destroy_turn)
@@ -168,7 +171,7 @@ class Game(db.Model):
                 for color in constants.COLORS:
                     cards_with_this_color = filter(lambda card: card.color == color, self.get_cards_of_user(other_user))
 
-                    turn = Turn(self, constants.TURN_HINT)
+                    turn = Turn(self, user, constants.TURN_HINT, current_turn_number)
                     turn.hint_user = other_user
 
                     if cards_with_this_color:
@@ -184,7 +187,7 @@ class Game(db.Model):
                     cards_with_this_value = filter(lambda card: card.value == value,
                                                    self.get_cards_of_user(other_user))
 
-                    turn = Turn(self, constants.TURN_HINT)
+                    turn = Turn(self, user, constants.TURN_HINT, current_turn_number)
                     turn.hint_user = other_user
 
                     if cards_with_this_value:
@@ -195,49 +198,50 @@ class Game(db.Model):
 
                     possible_turns.append(turn)
 
-        # Set common attributes
-        for turn in possible_turns:
-            turn.user = user
-            turn.turn_number = self.current_turn_number + 1
-
         return possible_turns
 
     @property
-    def start_deck(self) -> list(Card):
+    def start_deck(self):
         return [Card.from_string(card_string) for card_string in self._start_deck.split(",")]
 
     @start_deck.setter
-    def start_deck(self, start_deck: list(Card)) -> None:
+    def start_deck(self, start_deck):
         self._start_deck = ",".join(start_deck)
 
 
     @property
-    def users(self) -> list(User):
+    def users(self):
         return [relation.user for relation in self.to_users]
 
     @users.setter
-    def users(self, users: list(User)) -> None:
+    def users(self, users):
         for user in users:
             self.to_users.append(UsersInGames(self, user))
 
 
     @property
-    def current_turn_number(self) -> int:
-        return self.get_turns().count()
+    def current_user(self):
+        users = self.users
+        return users[self.current_turn_number % len(users)]
+
 
     @property
-    def played_turns(self) -> list(Turn):
+    def current_turn_number(self):
+        return self.played_turns.count()
+
+    @property
+    def played_turns(self):
         return Turn.query.filter_by(game=self)
 
     @property
-    def current_number_of_hints(self) -> int:
+    def current_number_of_hints(self):
         number_of_hints = self.start_failures
         number_of_hints -= Turn.query.filter_by(game=self, type=constants.TURN_PUT, put_correct=False).count()
 
         return number_of_hints
 
     @property
-    def current_number_of_hints(self) -> int:
+    def current_number_of_hints(self):
         number_of_hints = self.start_hints
         number_of_hints += Turn.query.filter_by(game=self, hint_restored=True).count()
         number_of_hints -= Turn.query.filter_by(game=self, type=constants.TURN_HINT).count()
@@ -259,7 +263,7 @@ class Game(db.Model):
             return self.start_deck[card_counter]
 
     @property
-    def card_status(self) -> {int: int}:
+    def card_status(self):
         """
         Return the current status of the played card as a dictionary
         color -> last played value. Does only look into the turns,
@@ -267,7 +271,7 @@ class Game(db.Model):
         """
         card_status = {color: 0 for color in constants.COLORS}
 
-        for turn in self.get_turns():
+        for turn in self.played_turns:
             if turn.put_correct:
                 played_card = turn.cards
                 card_status[played_card.color] = played_card.value
@@ -288,7 +292,7 @@ class Turn(db.Model):
     game = db.relationship(Game, backref=db.backref("turns_in_game", uselist=True, cascade='delete,all'))
     turn_number = db.Column(db.Integer, nullable=False)
 
-    _card = db.Column(db.String(100), nullable=False)
+    _card = db.Column(db.String(100), nullable=False, default="")
     hint_type = db.Column(db.Integer, nullable=False, default=-1)
 
     _hint_user_id = db.Column(db.Integer, db.ForeignKey(User.id), nullable=True)
@@ -298,9 +302,11 @@ class Turn(db.Model):
     put_correct = db.Column(db.Boolean, nullable=False, default=False)
     hint_restored = db.Column(db.Boolean, nullable=False, default=False)
 
-    def __init__(self, game, type):
+    def __init__(self, game, user, type, turn_number):
         self.game = game
         self.type = type
+        self.user = user
+        self.turn_number = turn_number
 
     @property
     def cards(self):
@@ -308,10 +314,10 @@ class Turn(db.Model):
 
     @cards.setter
     def cards(self, card_or_cards):
-        if isinstance(Card, card_or_cards):
+        if isinstance(card_or_cards, Card):
             card_or_cards = [card_or_cards]
 
-        self._card = ",".join(card_or_cards)
+        self._card = ",".join(map(str, card_or_cards))
 
     def set_turn_properties(self):
         game = self.game
