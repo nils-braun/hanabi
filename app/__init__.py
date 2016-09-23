@@ -13,7 +13,7 @@ app = Flask(__name__)
 app.config.from_object('config')
 
 # Create a new database connection, we will use everywhere, using the settings in this application
-db = SQLAlchemy(app)
+db = SQLAlchemy(app, session_options={"autoflush": False})
 
 # Add the configurations and functionality specific to this web service.
 #set_basic_configuration_and_views(app)
