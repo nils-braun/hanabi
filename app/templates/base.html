@@ -1,0 +1,60 @@
+<html>
+    <head>
+        <title>{% block title %}Hanabi Online{% endblock %}</title>
+        {% block css %}
+            <link rel="stylesheet" type="text/css" href="/static/css/jquery-ui.min.css"/>
+            <link rel="stylesheet" type="text/css" href="/static/css/jquery.tagit.css"/>
+            <link rel="stylesheet" type="text/css" href="/static/css/main.css"/>
+            <link rel="stylesheet" type="text/css" href="/static/css/forms.css"/>
+        {% endblock %}
+        {% block script %}
+            <script src="/static/js/jquery-3.1.0.js" type="text/javascript" charset="utf-8"></script>
+            <script src="/static/js/jquery-ui.min.js" type="text/javascript" charset="utf-8"></script>
+            <script src="/static/js/tag-it.js" type="text/javascript" charset="utf-8"></script>
+            <script src="/static/js/main.js" type="text/javascript" charset="utf-8"></script>
+        {% endblock %}
+    </head>
+    <body>
+        <div id="header">
+            {% block header %}
+                {% if user is defined %}
+                    <a href="{{ url_for("game.home") }}">Home</a>
+                    <a href="{{ url_for("users.logout") }}">Logout</a>
+                {% else %}
+                    <a href="{{ url_for("users.login") }}">Login</a>
+                {% endif %}
+                <a href="{{ url_for("users.register") }}">Register</a>
+            {% endblock %}
+        </div>
+        <div id="content-wrapper">
+            <div id="{% block content_id %}content{% endblock %}">
+                {% block content %}
+                {% endblock %}
+            </div>
+        </div>
+        <div id="footer">
+            {% block footer %}
+                {% if user is defined %}
+                    <a href="{{ url_for("users.logout") }}">Logout (Currently logged in as {{ user.name }})</a>
+                {% else %}
+                    <a href="{{ url_for("users.login") }}">Login (Currently not logged in)</a>
+                {% endif %}
+            {% endblock %}
+        </div>
+        {% if get_flashed_messages(with_categories=true)|length > 0 %}
+        <div id="messages-wrap">
+            <script type="text/javascript">
+                setTimeout(function() {
+                    $("#messages-wrap").animate({bottom: "-=1000"}, 1000);
+                }, 3000);
+                $("#messages-wrap").fadeIn(200);
+            </script>
+            <div id="messages">
+                {% for category, msg in get_flashed_messages(with_categories=true) %}
+                    <p class="message flash-{{ category }}">{{ msg }}</p>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </body>
+</html>

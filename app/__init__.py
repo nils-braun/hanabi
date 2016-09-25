@@ -4,7 +4,7 @@
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 
-#from app.functions import set_basic_configuration_and_views
+from app.functions import set_basic_configuration_and_views
 
 # Create a new Flask application
 app = Flask(__name__)
@@ -16,4 +16,4 @@ app.config.from_object('config')
 db = SQLAlchemy(app, session_options={"autoflush": False})
 
 # Add the configurations and functionality specific to this web service.
-#set_basic_configuration_and_views(app)
+set_basic_configuration_and_views(app)

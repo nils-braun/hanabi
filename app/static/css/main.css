@@ -1,0 +1,134 @@
+body {
+    background-color: #b1b1b1;
+    height: 100%;
+    padding: 0;
+    margin: 0;
+    font-family: 'Ubuntu', 'Lucida Grande', 'Lucida Sans Unicode', 'Geneva', 'Verdana', sans-serif;
+    overflow: hidden;
+}
+
+#content-wrapper {
+    position: absolute;
+    top: 50px;
+    bottom: 50px;
+    padding: 50px;
+    width: 100%;
+    box-sizing: border-box;
+    text-align: center;
+    overflow-y: auto;
+}
+
+#content, #content-songlist {
+    position: relative;
+    text-align: left;
+    width: 60%;
+    margin-left: auto;
+    margin-right: auto;
+    border: 1pt black solid;
+    padding: 20px;
+    background: #ffffff;
+}
+
+#header, #footer {
+    position: absolute;
+    width: 100%;
+    height: 50px;
+    background: #797979;
+    display: table;
+    table-layout: fixed;
+}
+
+#header{
+    top: 0;
+}
+
+#footer {
+    bottom: 0;
+}
+
+#footer a, #header a {
+    display: table-cell;
+    text-align: center;
+    vertical-align: middle;
+    color: black;
+}
+
+#footer a:hover, #header a:hover {
+    color: white;
+}
+
+
+#messages-wrap {
+    position: absolute;
+    width: 300px;
+    height: auto;
+    right: 20px;
+    bottom: 20px;
+    background: #606060;
+    display: none;
+    border: 1px solid black;
+}
+
+#messages-wrap:hover {
+    opacity: 0.4;
+}
+
+.message {
+    display: block;
+    margin: 20px;
+    vertical-align: middle;
+}
+
+.flash-error-message {
+    color: darkred;
+}
+
+.unrate-star, .rating-star {
+    width: 20px;
+    height: 20px;
+    display: inline-block;
+    background-size: contain;
+    background-repeat: repeat-x;
+    background-color: transparent;
+    border: none;
+}
+
+.rating-star {
+    background-image: url("../img/star.png");
+}
+
+.unrate-star {
+    background-image: url("../img/unrate_star.png");
+}
+
+.rating-star-filled {
+    background-image: url("../img/star_filled.png");
+}
+
+form .rating-star, form .unrate-star {
+    width: 40px;
+    height: 40px;
+}
+
+.rating {
+    text-align: center;
+}
+
+.unrate-star {
+    margin-right: 20px;
+}
+
+.unrate-star:focus {
+    outline: none;
+}
+
+.ui-corner-all {
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+.ui-icon {
+    background-image: url("../img/ui-icons_555555_256x240.png") !important;
+}

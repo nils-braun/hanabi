@@ -3,6 +3,7 @@ from datetime import datetime
 
 from app import db
 import app.game.constants as constants
+from app.users.models import User
 
 
 class Card:
@@ -51,16 +52,6 @@ class Card:
                     self.uniqueness_value == other.uniqueness_value)
         else:
             return self == Card.from_string(str(other))
-
-
-class User(db.Model):
-    __tablename__ = 'users'
-
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.Unicode(250), unique=True, nullable=False)
-
-    def __init__(self, name):
-        self.name = name
 
 
 class Game(db.Model):
