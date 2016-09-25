@@ -1,6 +1,6 @@
 import app.game.constants as constants
 from app.game.models import Turn, Game, Card
-from app.game.tests.test_make_turn import DatabaseTest
+from app.game.tests.fixtures import DatabaseTest
 
 
 class TestTurn(DatabaseTest):

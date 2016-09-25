@@ -1,31 +1,10 @@
-import os
-from unittest import TestCase, main
+from unittest import main
 
-from app import db
 import app.game.constants as constants
+from app import db
 from app.game.functions import make_turn
-from app.game.models import Game, User, Turn
-
-
-class DatabaseTest(TestCase):
-    def setUp(self):
-        db.create_all()
-
-        self.user = User("test")
-        db.session.add(self.user)
-
-        self.game = Game(["C0#1#0", "C1#1#0", "C2#1#0", "C0#1#1"], self.user, 3, 10, 4)
-        self.game.users = [self.user]
-        self.game.state = constants.GAME_STARTED
-
-        db.session.add(self.game)
-        db.session.commit()
-
-        db.session.commit()
-
-    def tearDown(self):
-        db.session.remove()
-        db.drop_all()
+from app.game.models import User, Turn
+from app.game.tests.fixtures import DatabaseTest
 
 
 class TestMakeTurnCornerCases(DatabaseTest):
