@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block content %}
+    <h1>Hi {{ user.name }}!</h1>
+
+    <table>
+        <thead>
+            <tr>
+                <td>Number</td>
+                <td>Started</td>
+                <td>Users</td>
+                <td>State</td>
+            </tr>
+        </thead>
+        <tbody>
+            {% if current_games|length > 0 %}
+                {% for id, user_game in current_games %}
+                    <tr>
+                        <td>{{ id }}</td>
+                        <td>{{ user_game.game.started }}</td>
+                        <td>{{ user_game.game.users }}</td>
+                        <td>{{ user_game.game.state }} ({{ user_game.game.current_turn_number }})</td>
+                    </tr>
+                {% endfor %}
+            {% else %}
+                <tr>
+                    <td colspan="4">No current games!</td>
+                </tr>
+            {% endif %}
+        </tbody>
+    </table>
+
+    <a href="{{ url_for("game.new_game") }}">Create new game</a>
+{% endblock %}

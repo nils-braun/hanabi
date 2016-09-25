@@ -103,6 +103,18 @@ class Game(db.Model):
 
         return card_status[card.color] == card.value - 1
 
+    @staticmethod
+    def get_start_number_of_cards_for_players(player_number):
+        # TODO
+        if player_number == 2:
+            return 5
+        if player_number == 3:
+            return 4
+        if player_number == 4:
+            return 4
+        else:
+            raise AttributeError("Invalid number of players.")
+
     def get_cards_of_user(self, user):
         start_deck = self.start_deck
         card_counter = 0
