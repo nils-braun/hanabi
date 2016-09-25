@@ -29,6 +29,9 @@ class Card:
         return "C{color}#{value}#{uniqueness_value}".format(color=self.color, value=self.value,
                                                             uniqueness_value=self.uniqueness_value)
 
+    def __repr__(self):
+        return str(self)
+
     @staticmethod
     def from_string(card_string):
         regex_decomposition = re.match(r"C([0-9])#([1-5])#([0-4])", card_string)
@@ -43,8 +46,11 @@ class Card:
         return new_card
 
     def __eq__(self, other):
-        return (self.value == other.value and self.color == other.color and
-                self.uniqueness_value == other.uniqueness_value)
+        if isinstance(other, Card):
+            return (self.value == other.value and self.color == other.color and
+                    self.uniqueness_value == other.uniqueness_value)
+        else:
+            return self == Card.from_string(str(other))
 
 
 class User(db.Model):
@@ -121,20 +127,18 @@ class Game(db.Model):
 
         # Then check every other turns: if it is a put or destroy term, the given card is deleted from the user and
         # he will get the next one. If the user is not involved, remember to still keep on counting cards.
-        turns = filter(lambda turn: turn.type in [constants.TURN_HINT, constants.TURN_DESTROY], self.played_turns)
+        turns = filter(lambda turn: turn.type in [constants.TURN_PUT, constants.TURN_DESTROY], self.played_turns.all())
         for turn in turns:
             if turn.user == user:
                 assert len(turn.cards) == 1
 
                 del cards_of_user[cards_of_user.index(turn.cards[0])]
 
-                # here we allow the users o go on playing even if there are no more cards (which is possible)
+                # here we allow the users to go on playing even if there are no more cards (which is possible)
                 if card_counter < len(start_deck):
                     cards_of_user.append(start_deck[card_counter])
 
             card_counter += 1
-
-            assert card_counter < len(start_deck)
 
         return cards_of_user
 
@@ -212,7 +216,6 @@ class Game(db.Model):
     def start_deck(self, start_deck):
         self._start_deck = ",".join(start_deck)
 
-
     @property
     def users(self):
         return [relation.user for relation in self.to_users]
@@ -222,12 +225,10 @@ class Game(db.Model):
         for user in users:
             self.to_users.append(UsersInGames(self, user))
 
-
     @property
     def current_user(self):
         users = self.users
         return users[self.current_turn_number % len(users)]
-
 
     @property
     def current_turn_number(self):
@@ -238,11 +239,11 @@ class Game(db.Model):
         return Turn.query.filter_by(game=self)
 
     @property
-    def current_number_of_hints(self):
-        number_of_hints = self.start_failures
-        number_of_hints -= Turn.query.filter_by(game=self, type=constants.TURN_PUT, put_correct=False).count()
+    def current_number_of_failures(self):
+        number_of_failures = self.start_failures
+        number_of_failures -= Turn.query.filter_by(game=self, type=constants.TURN_PUT, put_correct=False).count()
 
-        return number_of_hints
+        return number_of_failures
 
     @property
     def current_number_of_hints(self):
@@ -258,7 +259,7 @@ class Game(db.Model):
         card_counter = len(self.users) * self.start_number_of_cards
 
         # Every put or destroy leads to a new card...
-        turns = filter(lambda turn: turn.type in [constants.TURN_HINT, constants.TURN_DESTROY], self.played_turns)
+        turns = filter(lambda turn: turn.type in [constants.TURN_PUT, constants.TURN_DESTROY], self.played_turns.all())
         card_counter += len(list(turns))
 
         if card_counter > len(self.start_deck) - 1:
@@ -275,9 +276,9 @@ class Game(db.Model):
         """
         card_status = {color: 0 for color in constants.COLORS}
 
-        for turn in self.played_turns:
+        for turn in self.played_turns.all():
             if turn.put_correct:
-                played_card = turn.cards
+                played_card = turn.cards[0]
                 card_status[played_card.color] = played_card.value
 
         return card_status
