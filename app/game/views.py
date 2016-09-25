@@ -1,13 +1,15 @@
 from flask import Blueprint
 from flask import flash
 from flask import g
+from flask import redirect
 from flask import request
+from flask import url_for
 
 from app import db
 from app.functions import render_template_with_user, add_before_request, redirect_back_or
 from app.game import constants
 from app.game.forms import NewGameForm
-from app.game.models import Game, UsersInGames
+from app.game.models import Game, UsersInGames, Turn
 from app.users.models import User
 
 mod = Blueprint('game', __name__, url_prefix='/game')
@@ -60,4 +62,40 @@ def start_game():
     db.session.commit()
 
     return redirect_back_or("game.game", id=game_id)
+
+
+@mod.route('/make_turn/', methods=['GET'])
+def make_turn():
+    print(Turn.query.all())
+
+    game_id = int(request.args["game_id"])
+    turn_id = int(request.args["turn_id"])
+
+    current_game = Game.query.filter_by(id=game_id).one()
+
+    if g.user != current_game.current_user:
+        raise AttributeError("It is not the users turn.")
+
+    possible_turns = current_game.get_possible_turns(g.user)
+
+    if turn_id >= len(possible_turns):
+        raise RuntimeError("Turn is not possible.")
+
+    possible_turn = possible_turns[turn_id]
+
+    print(possible_turn)
+
+    turn = Turn.from_possible_turn(possible_turn)
+
+    db.session.add(turn)
+    # TODO: Do we need a commit here?
+
+    current_game.update_game_status()
+    db.session.merge(current_game)
+
+    db.session.commit()
+
+    print(Turn.query.all())
+
+    return redirect(url_for("game.game", id=game_id))
 

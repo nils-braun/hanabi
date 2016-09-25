@@ -133,6 +133,7 @@ class Game(db.Model):
         return all_cards
 
     def get_cards_of_user(self, user):
+        print("Asking for", user)
         start_deck = self.start_deck
         card_counter = 0
 
@@ -147,10 +148,15 @@ class Game(db.Model):
 
         # Then check every other turns: if it is a put or destroy term, the given card is deleted from the user and
         # he will get the next one. If the user is not involved, remember to still keep on counting cards.
-        turns = filter(lambda turn: turn.type in [constants.TURN_PUT, constants.TURN_DESTROY], self.played_turns.all())
+        turns = list(filter(lambda turn: turn.type in [constants.TURN_PUT, constants.TURN_DESTROY], self.played_turns.all()))
+
+        print(turns)
+
         for turn in turns:
             if turn.user == user:
                 assert len(turn.cards) == 1
+
+                print(cards_of_user)
 
                 del cards_of_user[cards_of_user.index(turn.cards[0])]
 
@@ -176,12 +182,12 @@ class Game(db.Model):
         # Putting down cards is only possible for the cards the user owns
         # Destroying a card is only possible for the cards the user owns
         for card in self.get_cards_of_user(user):
-            put_turn = Turn(self, user, constants.TURN_PUT, current_turn_number)
+            put_turn = PossibleTurn(self, user, constants.TURN_PUT, current_turn_number)
             put_turn.cards = card
 
             possible_turns.append(put_turn)
 
-            destroy_turn = Turn(self, user, constants.TURN_DESTROY, current_turn_number)
+            destroy_turn = PossibleTurn(self, user, constants.TURN_DESTROY, current_turn_number)
             destroy_turn.cards = card
 
             possible_turns.append(destroy_turn)
@@ -197,9 +203,10 @@ class Game(db.Model):
                 # There are four hint types
                 # (a) A color hint, (b) A not-color hint
                 for color in constants.COLORS:
-                    cards_with_this_color = filter(lambda card: card.color == color, self.get_cards_of_user(other_user))
+                    cards_with_this_color = list(
+                        filter(lambda card: card.color == color, self.get_cards_of_user(other_user)))
 
-                    turn = Turn(self, user, constants.TURN_HINT, current_turn_number)
+                    turn = PossibleTurn(self, user, constants.TURN_HINT, current_turn_number)
                     turn.hint_user = other_user
 
                     if cards_with_this_color:
@@ -212,10 +219,10 @@ class Game(db.Model):
 
                 # (c) A value hint, (d) A not-value hint
                 for value in constants.VALUES:
-                    cards_with_this_value = filter(lambda card: card.value == value,
-                                                   self.get_cards_of_user(other_user))
+                    cards_with_this_value = list(filter(lambda card: card.value == value,
+                                                        self.get_cards_of_user(other_user)))
 
-                    turn = Turn(self, user, constants.TURN_HINT, current_turn_number)
+                    turn = PossibleTurn(self, user, constants.TURN_HINT, current_turn_number)
                     turn.hint_user = other_user
 
                     if cards_with_this_value:
@@ -225,6 +232,9 @@ class Game(db.Model):
                         turn.hint_type = constants.HINT_NOT_VALUE[value]
 
                     possible_turns.append(turn)
+
+        for turn in possible_turns:
+            turn.set_turn_properties()
 
         return possible_turns
 
@@ -324,7 +334,8 @@ class Turn(db.Model):
     type = db.Column(db.Integer, nullable=False)
 
     _user_id = db.Column(db.Integer, db.ForeignKey(User.id), nullable=False)
-    user = db.relationship(User, backref=db.backref("turns_played", uselist=True, cascade='delete,all'), foreign_keys=[_user_id])
+    user = db.relationship(User, backref=db.backref("turns_played", uselist=True, cascade='delete,all'),
+                           foreign_keys=[_user_id])
 
     _game_id = db.Column(db.Integer, db.ForeignKey(Game.id), nullable=False)
     game = db.relationship(Game, backref=db.backref("turns_in_game", uselist=True, cascade='delete,all'))
@@ -334,21 +345,32 @@ class Turn(db.Model):
     hint_type = db.Column(db.Integer, nullable=False, default=-1)
 
     _hint_user_id = db.Column(db.Integer, db.ForeignKey(User.id), nullable=True)
-    hint_user = db.relationship(User, backref=db.backref("hints_given", uselist=True, cascade='delete,all'), foreign_keys=[_hint_user_id])
+    hint_user = db.relationship(User, backref=db.backref("hints_given", uselist=True, cascade='delete,all'),
+                                foreign_keys=[_hint_user_id])
 
     last_card_drawn = db.Column(db.Boolean, nullable=False, default=False)
     put_correct = db.Column(db.Boolean, nullable=False, default=False)
     hint_restored = db.Column(db.Boolean, nullable=False, default=False)
 
-    def __init__(self, game, user, type, turn_number):
+
+class PossibleTurn:
+    def __init__(self, game, user, turn_type, turn_number):
         self.game = game
-        self.type = type
+        self.type = turn_type
         self.user = user
         self.turn_number = turn_number
 
+        self._card = ""
+
+        self.last_card_drawn = False
+        self.hint_restored = False
+        self.put_correct = False
+
+        self.hint_type = -1
+
     @property
     def cards(self):
-        if self._card is None:
+        if self._card is None or self._card == "":
             return []
         return [Card.from_string(card) for card in self._card.split(",")]
 
@@ -369,10 +391,51 @@ class Turn(db.Model):
             if game.current_number_of_hints < game.start_hints:
                 self.hint_restored = True
         elif self.type == constants.TURN_PUT:
-            if game.card_fits_good(self.cards):
+            if game.card_fits_good(self.cards[0]):
                 self.put_correct = True
-                if game.card_can_generate_hint(self.cards):
+                if game.card_can_generate_hint(self.cards[0]):
                     self.hint_restored = True
+
+    @property
+    def type_string(self):
+        if self.type == constants.TURN_DESTROY:
+            return "destroy"
+        elif self.type == constants.TURN_HINT:
+            return "hint"
+        elif self.type == constants.TURN_PUT:
+            return "put"
+        else:
+            raise ValueError("Invalid turn type.")
+
+    @property
+    def hint_type_string(self):
+        for constant in dir(constants):
+            if constant.startswith("HINT_") and getattr(constants, constant) == self.hint_type:
+                return constant
+
+        for name, constant in constants.HINT_NOT_COLOR.items():
+            if constant == self.hint_type:
+                return "HINT_NOT_COLOR " + str(name)
+
+        for name, constant in constants.HINT_NOT_VALUE.items():
+            if constant == self.hint_type:
+                return "HINT_NOT_VALUE " + str(name)
+
+        raise ValueError("Invalid hint type.")
+
+    def __str__(self):
+        msg = "{self.user.name}, {self.turn_number}: {self.type_string}"
+        if self.type in [constants.TURN_DESTROY, constants.TURN_PUT]:
+            msg += " of {self.cards}"
+        elif self.type == constants.TURN_HINT:
+            msg += " {self.hint_type_string} to {self.hint_user.name} ({self.cards})"
+
+        msg += " last: {self.last_card_drawn}, put: {self.put_correct}, hint: {self.hint_restored}"
+
+        return msg.format(self=self)
+
+    def __repr__(self):
+        return str(self)
 
 
 class UsersInGames(db.Model):
