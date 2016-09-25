@@ -13,12 +13,13 @@
         </thead>
         <tbody>
             {% if current_games|length > 0 %}
-                {% for id, user_game in current_games %}
-                    <tr>
-                        <td>{{ id }}</td>
+                {% for number, user_game in current_games %}
+                    <tr onclick="window.location = '{{ url_for("game.game", id=user_game.game.id) }}'">
+                        <td>{{ number }}</td>
                         <td>{{ user_game.game.started }}</td>
                         <td>{{ user_game.game.users }}</td>
-                        <td>{{ user_game.game.state }} ({{ user_game.game.current_turn_number }})</td>
+                        <td>{{ user_game.game.state_string }}
+                            (turns: {{ user_game.game.current_turn_number }})</td>
                     </tr>
                 {% endfor %}
             {% else %}

@@ -1,3 +1,4 @@
+import random
 import re
 from datetime import datetime
 
@@ -53,6 +54,9 @@ class Card:
         else:
             return self == Card.from_string(str(other))
 
+    def __lt__(self, other):
+        return str(self) <= str(other)
+
 
 class Game(db.Model):
     __tablename__ = "games"
@@ -67,7 +71,7 @@ class Game(db.Model):
     _start_player_id = db.Column(db.Integer, db.ForeignKey(User.id), nullable=False)
     start_player = db.relationship(User, backref=db.backref("games_started", uselist=True, cascade='delete,all'))
 
-    state = db.Column(db.Integer(), nullable=False, default=-1)
+    state = db.Column(db.Integer(), nullable=False, default=constants.GAME_CREATED)
 
     def __init__(self, start_deck, start_player, start_failures, start_hints, start_number_of_cards):
         self.start_deck = start_deck
@@ -114,6 +118,19 @@ class Game(db.Model):
             return 4
         else:
             raise AttributeError("Invalid number of players.")
+
+    @staticmethod
+    def get_random_start_deck():
+        all_cards = []
+
+        for color in constants.COLORS:
+            for value in constants.VALUES:
+                for uniqueness_value in range(Card.how_many_cards_per_value(value)):
+                    all_cards.append(Card(color, value, uniqueness_value))
+
+        random.shuffle(all_cards)
+
+        return all_cards
 
     def get_cards_of_user(self, user):
         start_deck = self.start_deck
@@ -217,7 +234,7 @@ class Game(db.Model):
 
     @start_deck.setter
     def start_deck(self, start_deck):
-        self._start_deck = ",".join(start_deck)
+        self._start_deck = ",".join(map(str, start_deck))
 
     @property
     def users(self):
@@ -240,6 +257,19 @@ class Game(db.Model):
     @property
     def played_turns(self):
         return Turn.query.filter_by(game=self)
+
+    @property
+    def state_string(self):
+        if self.state == constants.GAME_LOST:
+            return "lost"
+        elif self.state == constants.GAME_STARTED:
+            return "started"
+        elif self.state == constants.GAME_WON:
+            return "won"
+        elif self.state == constants.GAME_CREATED:
+            return "created"
+        else:
+            raise ValueError("Invalid game state.")
 
     @property
     def current_number_of_failures(self):

@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block content %}
+    <h1>Game {{ game.id }}</h1>
+
+    <h2>Debug Stats</h2>
+
+    <table>
+        <tr>
+            <td width="20%">Start deck</td>
+            <td>{{ game.start_deck }}</td>
+        </tr>
+        <tr>
+            <td>User cards</td>
+            <td>
+                {% for user in game.users %}
+                    User: {{ user.name }}, {{ game.get_cards_of_user(user) }}<br/>
+                {% endfor %}
+            </td>
+        </tr>
+        <tr>
+            <td>Current turn number:</td>
+            <td>{{ game.current_turn_number }}</td>
+        </tr>
+        <tr>
+            <td>Current game state:</td>
+            <td>{{ game.state_string }}</td>
+        </tr>
+        <tr>
+            <td>Current user:</td>
+            <td>{{ game.current_user.name }}</td>
+        </tr>
+        <tr>
+            <td>Possible turns:</td>
+            <td>{{ game.get_possible_turns(game.current_user) }}</td>
+        </tr>
+    </table>
+
+    <h2>Game Stats</h2>
+    <a href="{{ url_for("game.start_game", id=game.id) }}">Start game</a>
+{% endblock %}

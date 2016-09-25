@@ -16,6 +16,8 @@ class PlayerValidator(object):
     def __call__(self, form, field):
         data = field.data
         if data is not None:
+            if not (2 <= len(data.split(",")) <= 4):
+                raise ValidationError("Only player numbers between 2 and 4 are allowed.")
             for user in data.split(","):
                 if User.query.filter_by(name=user.strip()).count() != 1:
                     raise ValidationError("Invalid user {user}.".format(user=user))
