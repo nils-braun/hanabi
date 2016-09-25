@@ -9,7 +9,7 @@ class DatabaseTest(TestCase):
     def setUp(self):
         db.create_all()
 
-        self.user = User("test")
+        self.user = User("test_1")
         db.session.add(self.user)
         self.user_2 = User("test_2")
         db.session.add(self.user_2)
@@ -20,8 +20,6 @@ class DatabaseTest(TestCase):
         self.game.state = constants.GAME_STARTED
 
         db.session.add(self.game)
-        db.session.commit()
-
         db.session.commit()
 
     def tearDown(self):

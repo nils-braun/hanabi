@@ -1,5 +1,3 @@
-from unittest import TestCase
-
 from app import db
 from app.game import constants
 from app.game.models import Game, Card, Turn, UsersInGames

@@ -43,7 +43,3 @@ class TestMakeTurnCornerCases(DatabaseTest):
 
         turn.turn_number = 1
         self.assertRaisesRegex(RuntimeError, "Turn is not possible.", make_turn, turn)
-
-
-if __name__ == '__main__':
-    main()
