@@ -66,8 +66,6 @@ def start_game():
 
 @mod.route('/make_turn/', methods=['GET'])
 def make_turn():
-    print(Turn.query.all())
-
     game_id = int(request.args["game_id"])
     turn_id = int(request.args["turn_id"])
 
@@ -83,19 +81,15 @@ def make_turn():
 
     possible_turn = possible_turns[turn_id]
 
-    print(possible_turn)
-
     turn = Turn.from_possible_turn(possible_turn)
 
     db.session.add(turn)
-    # TODO: Do we need a commit here?
+    db.session.commit()
 
     current_game.update_game_status()
     db.session.merge(current_game)
 
     db.session.commit()
-
-    print(Turn.query.all())
 
     return redirect(url_for("game.game", id=game_id))
 
