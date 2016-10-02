@@ -60,8 +60,8 @@ function addBindings() {
             }
 
             if(cardColor != -1) {
-                card.addClass("card-color-" + valueToColor(cardColor));
-                card.append("<span class='card-color card-text'>" + valueToColorChar(cardColor) + "</span>");
+                card.addClass("card-color-" + cardColor);
+                card.append("<span class='card-color card-text'>" + cardColor + "</span>");
             }
         }
     });

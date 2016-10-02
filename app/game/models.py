@@ -57,6 +57,25 @@ class Card:
     def __lt__(self, other):
         return str(self) <= str(other)
 
+    @property
+    def color_string(self):
+        return self.color_to_string(self.color)
+
+    @staticmethod
+    def color_to_string(color):
+        if color == constants.COLOR_BLUE:
+            return "blue"
+        elif color == constants.COLOR_GREEN:
+            return "green"
+        elif color == constants.COLOR_WHITE:
+            return "white"
+        elif color == constants.COLOR_RED:
+            return "red"
+        elif color == constants.COLOR_YELLOW:
+            return "yellow"
+        else:
+            raise KeyError
+
 
 class Game(db.Model):
     __tablename__ = "games"
@@ -163,6 +182,37 @@ class Game(db.Model):
 
         return cards_of_user
 
+    def get_hints_for_card(self, card):
+        all_hints = Turn.query.filter_by(game=self, type=constants.TURN_HINT).all()
+
+        # Exactly 4 slots: Hint for value, hint for color, hint for not value, hint for not color
+        return_hints = ["", "", "", ""]
+
+        filtered_hints = list(filter(lambda h: card in h.cards, all_hints))
+        for hint in filtered_hints:
+            if hint.hint_type == constants.HINT_VALUE:
+                return_hints[0] = "Value is " + str(card.value)
+            elif hint.hint_type == constants.HINT_COLOR:
+                return_hints[1] = "Color is " + str(card.color_string)
+            elif hint.hint_type in constants.HINT_NOT_COLOR.values():
+                color = list(constants.HINT_NOT_COLOR.keys())[
+                    list(constants.HINT_NOT_COLOR.values()).index(hint.hint_type)]
+
+                if not return_hints[2]:
+                    return_hints[2] = "Color is not "
+
+                return_hints[2] += Card.color_to_string(color)
+            elif hint.hint_type in constants.HINT_NOT_VALUE.values():
+                value = list(constants.HINT_NOT_VALUE.keys())[
+                    list(constants.HINT_NOT_VALUE.values()).index(hint.hint_type)]
+
+                if not return_hints[3]:
+                    return_hints[3] = "Value is not "
+
+                return_hints[3] += str(value)
+
+        return return_hints
+
     def get_possible_turns(self, user):
         possible_turns = []
 
@@ -197,9 +247,10 @@ class Game(db.Model):
 
                 # There are four hint types
                 # (a) A color hint, (b) A not-color hint
+                other_users_cards = self.get_cards_of_user(other_user)
                 for color in constants.COLORS:
                     cards_with_this_color = list(
-                        filter(lambda card: card.color == color, self.get_cards_of_user(other_user)))
+                        filter(lambda card: card.color == color, other_users_cards))
 
                     turn = PossibleTurn(self, user, constants.TURN_HINT, current_turn_number)
                     turn.hint_user = other_user
@@ -208,6 +259,7 @@ class Game(db.Model):
                         turn.cards = cards_with_this_color
                         turn.hint_type = constants.HINT_COLOR
                     else:
+                        turn.cards = other_users_cards
                         turn.hint_type = constants.HINT_NOT_COLOR[color]
 
                     possible_turns.append(turn)
@@ -215,7 +267,7 @@ class Game(db.Model):
                 # (c) A value hint, (d) A not-value hint
                 for value in constants.VALUES:
                     cards_with_this_value = list(filter(lambda card: card.value == value,
-                                                        self.get_cards_of_user(other_user)))
+                                                        other_users_cards))
 
                     turn = PossibleTurn(self, user, constants.TURN_HINT, current_turn_number)
                     turn.hint_user = other_user
@@ -224,6 +276,7 @@ class Game(db.Model):
                         turn.cards = cards_with_this_value
                         turn.hint_type = constants.HINT_VALUE
                     else:
+                        turn.cards = other_users_cards
                         turn.hint_type = constants.HINT_NOT_VALUE[value]
 
                     possible_turns.append(turn)
