@@ -133,7 +133,6 @@ class Game(db.Model):
         return all_cards
 
     def get_cards_of_user(self, user):
-        print("Asking for", user)
         start_deck = self.start_deck
         card_counter = 0
 
@@ -150,13 +149,9 @@ class Game(db.Model):
         # he will get the next one. If the user is not involved, remember to still keep on counting cards.
         turns = list(filter(lambda turn: turn.type in [constants.TURN_PUT, constants.TURN_DESTROY], self.played_turns.all()))
 
-        print(turns)
-
         for turn in turns:
             if turn.user == user:
                 assert len(turn.cards) == 1
-
-                print(cards_of_user)
 
                 del cards_of_user[cards_of_user.index(turn.cards[0])]
 
@@ -327,47 +322,7 @@ class Game(db.Model):
         return card_status
 
 
-class Turn(db.Model):
-    __tablename__ = "turns"
-
-    id = db.Column(db.Integer, primary_key=True)
-    type = db.Column(db.Integer, nullable=False)
-
-    _user_id = db.Column(db.Integer, db.ForeignKey(User.id), nullable=False)
-    user = db.relationship(User, backref=db.backref("turns_played", uselist=True, cascade='delete,all'),
-                           foreign_keys=[_user_id])
-
-    _game_id = db.Column(db.Integer, db.ForeignKey(Game.id), nullable=False)
-    game = db.relationship(Game, backref=db.backref("turns_in_game", uselist=True, cascade='delete,all'))
-    turn_number = db.Column(db.Integer, nullable=False)
-
-    _card = db.Column(db.String(100), nullable=False, default="")
-    hint_type = db.Column(db.Integer, nullable=False, default=-1)
-
-    _hint_user_id = db.Column(db.Integer, db.ForeignKey(User.id), nullable=True)
-    hint_user = db.relationship(User, backref=db.backref("hints_given", uselist=True, cascade='delete,all'),
-                                foreign_keys=[_hint_user_id])
-
-    last_card_drawn = db.Column(db.Boolean, nullable=False, default=False)
-    put_correct = db.Column(db.Boolean, nullable=False, default=False)
-    hint_restored = db.Column(db.Boolean, nullable=False, default=False)
-
-
-class PossibleTurn:
-    def __init__(self, game, user, turn_type, turn_number):
-        self.game = game
-        self.type = turn_type
-        self.user = user
-        self.turn_number = turn_number
-
-        self._card = ""
-
-        self.last_card_drawn = False
-        self.hint_restored = False
-        self.put_correct = False
-
-        self.hint_type = -1
-
+class TurnBaseObject:
     @property
     def cards(self):
         if self._card is None or self._card == "":
@@ -381,20 +336,6 @@ class PossibleTurn:
 
         self._card = ",".join(map(str, card_or_cards))
 
-    def set_turn_properties(self):
-        game = self.game
-
-        if game.next_card is None:
-            self.last_card_drawn = True
-
-        if self.type == constants.TURN_DESTROY:
-            if game.current_number_of_hints < game.start_hints:
-                self.hint_restored = True
-        elif self.type == constants.TURN_PUT:
-            if game.card_fits_good(self.cards[0]):
-                self.put_correct = True
-                if game.card_can_generate_hint(self.cards[0]):
-                    self.hint_restored = True
 
     @property
     def type_string(self):
@@ -437,6 +378,81 @@ class PossibleTurn:
     def __repr__(self):
         return str(self)
 
+
+class Turn(db.Model, TurnBaseObject):
+    __tablename__ = "turns"
+
+    id = db.Column(db.Integer, primary_key=True)
+    type = db.Column(db.Integer, nullable=False)
+
+    _user_id = db.Column(db.Integer, db.ForeignKey(User.id), nullable=False)
+    user = db.relationship(User, backref=db.backref("turns_played", uselist=True, cascade='delete,all'),
+                           foreign_keys=[_user_id])
+
+    _game_id = db.Column(db.Integer, db.ForeignKey(Game.id), nullable=False)
+    game = db.relationship(Game, backref=db.backref("turns_in_game", uselist=True, cascade='delete,all'))
+    turn_number = db.Column(db.Integer, nullable=False)
+
+    _card = db.Column(db.String(100), nullable=False, default="")
+    hint_type = db.Column(db.Integer, nullable=False, default=-1)
+
+    _hint_user_id = db.Column(db.Integer, db.ForeignKey(User.id), nullable=True)
+    hint_user = db.relationship(User, backref=db.backref("hints_given", uselist=True, cascade='delete,all'),
+                                foreign_keys=[_hint_user_id])
+
+    last_card_drawn = db.Column(db.Boolean, nullable=False, default=False)
+    put_correct = db.Column(db.Boolean, nullable=False, default=False)
+    hint_restored = db.Column(db.Boolean, nullable=False, default=False)
+
+    @staticmethod
+    def from_possible_turn(possible_turn):
+        new_turn = Turn()
+
+        new_turn.type = possible_turn.type
+        new_turn.user = possible_turn.user
+        new_turn.game = possible_turn.game
+        new_turn.turn_number = possible_turn.turn_number
+        new_turn._card = possible_turn._card
+        new_turn.hint_type = possible_turn.hint_type
+        new_turn.hint_user = possible_turn.hint_user
+        new_turn.last_card_drawn = possible_turn.last_card_drawn
+        new_turn.put_correct = possible_turn.put_correct
+        new_turn.hint_restored = possible_turn.hint_restored
+
+        return new_turn
+
+
+class PossibleTurn(TurnBaseObject):
+    def __init__(self, game, user, turn_type, turn_number):
+        self.game = game
+        self.type = turn_type
+        self.user = user
+        self.turn_number = turn_number
+
+        self._card = ""
+
+        self.last_card_drawn = False
+        self.hint_restored = False
+        self.put_correct = False
+
+        self.hint_type = -1
+
+        self.hint_user = None
+
+    def set_turn_properties(self):
+        game = self.game
+
+        if game.next_card is None:
+            self.last_card_drawn = True
+
+        if self.type == constants.TURN_DESTROY:
+            if game.current_number_of_hints < game.start_hints:
+                self.hint_restored = True
+        elif self.type == constants.TURN_PUT:
+            if game.card_fits_good(self.cards[0]):
+                self.put_correct = True
+                if game.card_can_generate_hint(self.cards[0]):
+                    self.hint_restored = True
 
 class UsersInGames(db.Model):
     __tablename__ = "users_to_games"
