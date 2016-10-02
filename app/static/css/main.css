@@ -18,10 +18,10 @@ body {
     overflow-y: auto;
 }
 
-#content, #content-songlist {
+#content {
     position: relative;
     text-align: left;
-    width: 60%;
+    width: 90%;
     margin-left: auto;
     margin-right: auto;
     border: 1pt black solid;
@@ -83,45 +83,6 @@ body {
     color: darkred;
 }
 
-.unrate-star, .rating-star {
-    width: 20px;
-    height: 20px;
-    display: inline-block;
-    background-size: contain;
-    background-repeat: repeat-x;
-    background-color: transparent;
-    border: none;
-}
-
-.rating-star {
-    background-image: url("../img/star.png");
-}
-
-.unrate-star {
-    background-image: url("../img/unrate_star.png");
-}
-
-.rating-star-filled {
-    background-image: url("../img/star_filled.png");
-}
-
-form .rating-star, form .unrate-star {
-    width: 40px;
-    height: 40px;
-}
-
-.rating {
-    text-align: center;
-}
-
-.unrate-star {
-    margin-right: 20px;
-}
-
-.unrate-star:focus {
-    outline: none;
-}
-
 .ui-corner-all {
     border-top-left-radius: 0;
     border-top-right-radius: 0;
@@ -129,6 +90,101 @@ form .rating-star, form .unrate-star {
     border-bottom-right-radius: 0;
 }
 
-.ui-icon {
-    background-image: url("../img/ui-icons_555555_256x240.png") !important;
+.circle-inner {
+    width: 20px;
+    height: 20px;
+    border: 1pt solid black;
+    display: inline-block;
+    margin: 5px;
+}
+
+.circle-inner.circle-on {
+    background-color: black;
+}
+
+.circle-inner.circle-off {
+    background-color: white;
+}
+
+.card {
+    width: 150px;
+    height: 218px;
+    display: inline-block;
+    margin: 10px;
+    overflow: hidden;
+    position: relative;
+    z-index: 0;
+    border-radius: 15px;
+    box-shadow: 0 0 5px black;
+}
+
+.card.card-clickable {
+    cursor: pointer;
+}
+
+.card.card-clickable:hover {
+    box-shadow: 0 0 10px black;
+}
+
+.card::after {
+    content: ' ';
+    display: block;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background: url("../../static/img/card_back.png") no-repeat;
+    background-size: cover;
+    background-clip: border-box;
+}
+
+.card.card-back::after {
+    opacity: 0.2;
+}
+
+.card > .card-text {
+    width: 100%;
+    text-align: center;
+    display: block;
+    position: relative;
+    z-index: 1;
+    text-shadow:  1px  1px 5px black,
+                  1px -1px 5px black,
+                 -1px  1px 5px black,
+                 -1px -1px 5px black;
+    cursor: default;
+}
+
+.card.card-clickable > .card-text {
+    cursor: pointer;
+}
+.card > .card-value {
+    font-size: 50pt;
+    margin-top: 20px;
+}
+
+.card > .card-color {
+    font-size: 30pt;
+    margin-top: 40px;
+}
+
+.card.card-color-green > .card-text {
+    color: green;
+}
+
+.card.card-color-blue > .card-text {
+    color: blue;
+}
+
+.card.card-color-white > .card-text {
+    color: white;
+}
+
+.card.card-color-red > .card-text {
+    color: red;
+}
+
+.card.card-color-yellow > .card-text {
+    color: yellow;
 }
