@@ -46,29 +46,25 @@ def new_game():
     return render_template_with_user("game/new_game.html", form=form)
 
 
-@mod.route('/game/', methods=['GET'])
-def game():
-    current_game = Game.query.filter_by(id=int(request.args["id"])).one()
+@mod.route('/game/<int:game_id>', methods=['GET'])
+def game(game_id):
+    current_game = Game.query.filter_by(id=game_id).one()
     return render_template_with_user("game/game.html", game=current_game)
 
 
-@mod.route('/start_game/', methods=['GET'])
-def start_game():
-    game_id = request.args["id"]
+@mod.route('/start_game/<int:game_id>', methods=['GET'])
+def start_game(game_id):
     current_game = Game.query.filter_by(id=int(game_id)).one()
     current_game.state = constants.GAME_STARTED
 
     db.session.merge(current_game)
     db.session.commit()
 
-    return redirect_back_or("game.game", id=game_id)
+    return redirect_back_or("game.game", game_id=game_id)
 
 
-@mod.route('/make_turn/', methods=['GET'])
-def make_turn():
-    game_id = int(request.args["game_id"])
-    turn_id = int(request.args["turn_id"])
-
+@mod.route('/make_turn/<int:game_id>/<int:turn_id>', methods=['GET'])
+def make_turn(game_id, turn_id):
     current_game = Game.query.filter_by(id=game_id).one()
 
     if g.user != current_game.current_user:
@@ -81,6 +77,8 @@ def make_turn():
 
     possible_turn = possible_turns[turn_id]
 
+    assert possible_turn.possibility_number == turn_id
+
     turn = Turn.from_possible_turn(possible_turn)
 
     db.session.add(turn)
@@ -91,5 +89,5 @@ def make_turn():
 
     db.session.commit()
 
-    return redirect(url_for("game.game", id=game_id))
+    return redirect(url_for("game.game", game_id=game_id))
 
