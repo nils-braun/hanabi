@@ -190,25 +190,22 @@ class Game(db.Model):
         filtered_hints = list(filter(lambda h: card in h.cards, all_hints))
         for hint in filtered_hints:
             if hint.hint_type == constants.HINT_VALUE:
-                return_hints[0] = "Value is " + str(card.value)
+                return_hints[0] = "Value is " + str(hint.hint_value)
             elif hint.hint_type == constants.HINT_COLOR:
-                return_hints[1] = "Color is " + str(card.color_string)
-            elif hint.hint_type in constants.HINT_NOT_COLOR.values():
-                color = list(constants.HINT_NOT_COLOR.keys())[
-                    list(constants.HINT_NOT_COLOR.values()).index(hint.hint_type)]
-
-                if not return_hints[2]:
-                    return_hints[2] = "Color is not "
-
-                return_hints[2] += Card.color_to_string(color)
+                return_hints[1] = "Color is " + Card.color_to_string(hint.hint_color)
             elif hint.hint_type in constants.HINT_NOT_VALUE.values():
-                value = list(constants.HINT_NOT_VALUE.keys())[
-                    list(constants.HINT_NOT_VALUE.values()).index(hint.hint_type)]
-
                 if not return_hints[3]:
-                    return_hints[3] = "Value is not "
+                    return_hints[2] = "Value is not "
+                else:
+                    return_hints[2] += " or "
+                return_hints[2] += str(hint.hint_value)
+            elif hint.hint_type in constants.HINT_NOT_COLOR.values():
+                if not return_hints[3]:
+                    return_hints[3] = "Color is not "
+                else:
+                    return_hints[3] += " or "
 
-                return_hints[3] += str(value)
+                return_hints[3] += Card.color_to_string(hint.hint_color)
 
         return return_hints
 
