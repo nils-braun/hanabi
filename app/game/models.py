@@ -28,8 +28,7 @@ class Card:
             return 2
 
     def __str__(self):
-        return "C{color}#{value}#{uniqueness_value}".format(color=self.color, value=self.value,
-                                                            uniqueness_value=self.uniqueness_value)
+        return "C{self.color}#{self.value}#{self.uniqueness_value}".format(self=self)
 
     def __repr__(self):
         return str(self)
@@ -74,7 +73,7 @@ class Card:
         elif color == constants.COLOR_YELLOW:
             return "yellow"
         else:
-            raise KeyError
+            raise KeyError(color)
 
 
 class Game(db.Model):
@@ -227,12 +226,12 @@ class Game(db.Model):
         # Putting down cards is only possible for the cards the user owns
         # Destroying a card is only possible for the cards the user owns
         for card in self.get_cards_of_user(user):
-            put_turn = PossibleTurn(self, user, constants.TURN_PUT, current_turn_number)
+            put_turn = PossibleTurn(self, user, constants.TURN_PUT, current_turn_number, len(possible_turns))
             put_turn.cards = card
 
             possible_turns.append(put_turn)
 
-            destroy_turn = PossibleTurn(self, user, constants.TURN_DESTROY, current_turn_number)
+            destroy_turn = PossibleTurn(self, user, constants.TURN_DESTROY, current_turn_number, len(possible_turns))
             destroy_turn.cards = card
 
             possible_turns.append(destroy_turn)
@@ -252,7 +251,7 @@ class Game(db.Model):
                     cards_with_this_color = list(
                         filter(lambda card: card.color == color, other_users_cards))
 
-                    turn = PossibleTurn(self, user, constants.TURN_HINT, current_turn_number)
+                    turn = PossibleTurn(self, user, constants.TURN_HINT, current_turn_number, len(possible_turns))
                     turn.hint_user = other_user
 
                     if cards_with_this_color:
@@ -269,7 +268,7 @@ class Game(db.Model):
                     cards_with_this_value = list(filter(lambda card: card.value == value,
                                                         other_users_cards))
 
-                    turn = PossibleTurn(self, user, constants.TURN_HINT, current_turn_number)
+                    turn = PossibleTurn(self, user, constants.TURN_HINT, current_turn_number, len(possible_turns))
                     turn.hint_user = other_user
 
                     if cards_with_this_value:
@@ -389,7 +388,6 @@ class TurnBaseObject:
 
         self._card = ",".join(map(str, card_or_cards))
 
-
     @property
     def type_string(self):
         if self.type == constants.TURN_DESTROY:
@@ -403,6 +401,7 @@ class TurnBaseObject:
 
     @property
     def hint_type_string(self):
+        # FIXME
         for constant in dir(constants):
             if constant.startswith("HINT_") and getattr(constants, constant) == self.hint_type:
                 return constant
@@ -416,6 +415,27 @@ class TurnBaseObject:
                 return "HINT_NOT_VALUE " + str(name)
 
         raise ValueError("Invalid hint type.")
+
+    @property
+    def hint_value(self):
+        assert self.type == constants.TURN_HINT
+
+        if self.hint_type == constants.HINT_VALUE:
+            return self.cards[0].value
+        for value, constant in constants.HINT_NOT_VALUE.items():
+            if constant == self.hint_type:
+                return value
+        raise ValueError()
+
+    @property
+    def hint_color(self):
+        assert self.type == constants.TURN_HINT
+        if self.hint_type == constants.HINT_COLOR:
+            return self.cards[0].color
+        for color, constant in constants.HINT_NOT_COLOR.items():
+            if constant == self.hint_type:
+                return color
+        raise ValueError()
 
     def __str__(self):
         msg = "{self.user.name}, {self.turn_number}: {self.type_string}"
@@ -476,11 +496,12 @@ class Turn(db.Model, TurnBaseObject):
 
 
 class PossibleTurn(TurnBaseObject):
-    def __init__(self, game, user, turn_type, turn_number):
+    def __init__(self, game, user, turn_type, turn_number, possibility_number):
         self.game = game
         self.type = turn_type
         self.user = user
         self.turn_number = turn_number
+        self.possibility_number = possibility_number
 
         self._card = ""
 
@@ -506,6 +527,29 @@ class PossibleTurn(TurnBaseObject):
                 self.put_correct = True
                 if game.card_can_generate_hint(self.cards[0]):
                     self.hint_restored = True
+
+    @property
+    def turn_string(self):
+        if self.type == constants.TURN_DESTROY:
+            return "Destroy card"
+        elif self.type == constants.TURN_PUT:
+            return "Put card down"
+        elif self.type == constants.TURN_HINT:
+            if self.hint_type == constants.HINT_COLOR:
+                hint_string = "You have a " + Card.color_to_string(self.hint_color) + " card"
+            elif self.hint_type == constants.HINT_VALUE:
+                hint_string = "You have a " + str(self.hint_value)
+            elif self.hint_type in constants.HINT_NOT_COLOR.values():
+                hint_string = "You do not have a " + Card.color_to_string(self.hint_color) + " card"
+            elif self.hint_type in constants.HINT_NOT_VALUE.values():
+                hint_string = "You do not have a " + str(self.hint_value)
+            else:
+                raise ValueError("Invalid hint: " + str(self.hint_type))
+
+            return "Give hint: " + hint_string
+        else:
+            raise ValueError("Invalid turn type.")
+
 
 class UsersInGames(db.Model):
     __tablename__ = "users_to_games"
