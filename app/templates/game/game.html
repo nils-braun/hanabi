@@ -78,7 +78,7 @@
     </table>
 
     {% if game.state_string == "created" %}
-        <a href="{{ url_for("game.start_game", id=game.id) }}">Start game</a>
+        <a href="{{ url_for("game.start_game", game_id=game.id) }}">Start game</a>
     {% endif %}
 
     <h2>Debug Stats</h2>
