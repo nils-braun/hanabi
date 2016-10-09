@@ -23,10 +23,10 @@ class CachedClassFunction:
                 self._variable_value = current_variable_value
 
             try:
-                cache = getattr(instance, "_cache" + f.__name__)
+                cache = getattr(instance, "_cache_" + f.__name__)
             except AttributeError:
-                setattr(instance, "_cache" + f.__name__, {})
-                cache = getattr(instance, "_cache" + f.__name__)
+                setattr(instance, "_cache_" + f.__name__, {})
+                cache = getattr(instance, "_cache_" + f.__name__)
 
             try:
                 value = cache[(args_string, kwargs_string)]
