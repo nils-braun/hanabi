@@ -1,5 +1,4 @@
 from flask import Blueprint
-from flask import flash
 from flask import g
 from flask import redirect
 from flask import request
@@ -33,10 +32,10 @@ def new_game():
         users = [User.query.filter_by(name=user_name.strip()).one() for user_name in form.users.data.split(",")]
 
         new_game = Game(start_deck=start_deck, start_player=start_player,
+                        users=users,
                         start_failures=form.start_failures.data,
                         start_hints=form.start_hints.data,
                         start_number_of_cards=Game.get_start_number_of_cards_for_players(len(users)))
-        new_game.users = users
 
         db.session.add(new_game)
         db.session.commit()
@@ -88,6 +87,8 @@ def make_turn(game_id, turn_id):
     db.session.merge(current_game)
 
     db.session.commit()
+
+    # Now all the caches of the game are invalid. But this does not matter, as we will leave the scope anyhow.
 
     return redirect(url_for("game.game", game_id=game_id))
 

@@ -131,20 +131,20 @@ class Game(db.Model):
 
         return all_cards
 
-    def __init__(self, start_deck, start_player, start_failures, start_hints, start_number_of_cards):
-        self.start_deck = start_deck
+    def __init__(self, start_deck, users, start_player, start_failures, start_hints, start_number_of_cards):
         self.start_failures = start_failures
         self.start_hints = start_hints
         self.start_player = start_player
         self.start_number_of_cards = start_number_of_cards
 
-    @property
-    def current_turn_number(self):
-        return self.played_turns.count()
+        for user in users:
+            self.to_users.append(UsersInGames(self, user))
 
-    @property
-    def played_turns(self):
-        return Turn.query.filter_by(game=self)
+        self._start_deck = ",".join(map(str, start_deck))
+
+    @CachedClassProperty()
+    def current_turn_number(self):
+        return Turn.query.filter_by(game=self).count()
 
     @property
     def state_string(self):
@@ -159,36 +159,31 @@ class Game(db.Model):
         else:
             raise ValueError("Invalid game state.")
 
-    @property
-    def start_deck(self):
-        return [Card.from_string(card_string) for card_string in self._start_deck.split(",")]
-
-    @start_deck.setter
-    def start_deck(self, start_deck):
-        self._start_deck = ",".join(map(str, start_deck))
-
-    @property
+    @CachedClassProperty()
     def users(self):
         return [relation.user for relation in self.to_users]
 
-    @users.setter
-    def users(self, users):
-        for user in users:
-            self.to_users.append(UsersInGames(self, user))
+    @CachedClassProperty()
+    def start_deck(self):
+        return [Card.from_string(card_string) for card_string in self._start_deck.split(",")]
 
-    @CachedClassProperty("current_turn_number")
+    @CachedClassProperty()
+    def played_turns(self):
+        return Turn.query.filter_by(game=self).all()
+
+    @CachedClassProperty()
     def current_user(self):
         users = self.users
         return users[self.current_turn_number % len(users)]
 
-    @CachedClassProperty("current_turn_number")
+    @CachedClassProperty()
     def current_number_of_failures(self):
         number_of_failures = self.start_failures
         number_of_failures -= Turn.query.filter_by(game=self, type=constants.TURN_PUT, put_correct=False).count()
 
         return number_of_failures
 
-    @CachedClassProperty("current_turn_number")
+    @CachedClassProperty()
     def current_number_of_hints(self):
         number_of_hints = self.start_hints
         number_of_hints += Turn.query.filter_by(game=self, hint_restored=True).count()
@@ -196,13 +191,13 @@ class Game(db.Model):
 
         return number_of_hints
 
-    @CachedClassProperty("current_turn_number")
+    @CachedClassProperty()
     def next_card(self):
         # Startup: everyone needs cards...
         card_counter = len(self.users) * self.start_number_of_cards
 
         # Every put or destroy leads to a new card...
-        turns = filter(lambda turn: turn.type in [constants.TURN_PUT, constants.TURN_DESTROY], self.played_turns.all())
+        turns = filter(lambda turn: turn.type in [constants.TURN_PUT, constants.TURN_DESTROY], self.played_turns)
         card_counter += len(list(turns))
 
         if card_counter > len(self.start_deck) - 1:
@@ -210,7 +205,7 @@ class Game(db.Model):
         else:
             return self.start_deck[card_counter]
 
-    @CachedClassProperty("current_turn_number")
+    @CachedClassProperty()
     def card_status(self):
         """
         Return the current status of the played card as a dictionary
@@ -219,7 +214,7 @@ class Game(db.Model):
         """
         card_status = {color: 0 for color in constants.COLORS}
 
-        for turn in self.played_turns.all():
+        for turn in self.played_turns:
             if turn.put_correct:
                 played_card = turn.cards[0]
                 card_status[played_card.color] = played_card.value
@@ -277,7 +272,7 @@ class Game(db.Model):
 
         return return_hints
 
-    @CachedClassFunction("current_turn_number")
+    @CachedClassFunction()
     def get_cards_of_user(self, user):
         start_deck = self.start_deck
         card_counter = 0
@@ -293,7 +288,7 @@ class Game(db.Model):
 
         # Then check every other turns: if it is a put or destroy term, the given card is deleted from the user and
         # he will get the next one. If the user is not involved, remember to still keep on counting cards.
-        turns = list(filter(lambda turn: turn.type in [constants.TURN_PUT, constants.TURN_DESTROY], self.played_turns.all()))
+        turns = list(filter(lambda turn: turn.type in [constants.TURN_PUT, constants.TURN_DESTROY], self.played_turns))
 
         for turn in turns:
             if turn.user == user:
@@ -309,7 +304,7 @@ class Game(db.Model):
 
         return cards_of_user
 
-    @CachedClassFunction("current_turn_number")
+    @CachedClassFunction()
     def get_possible_turns(self, user):
         possible_turns = []
 
@@ -561,6 +556,7 @@ class PossibleTurn(TurnBaseObject):
                 self.put_correct = True
                 if game.card_can_generate_hint(self.cards[0]):
                     self.hint_restored = True
+
 
 class UsersInGames(db.Model):
     __tablename__ = "users_to_games"
