@@ -39,17 +39,32 @@
                 <td>
                     {% for card in game.get_cards_of_user(other_user) %}
                         <div class="cardholder">
+
+                            <div class="card card-clickable"
                             {% if other_user != user %}
-                                <div class="card card-clickable"
-                                      data-card-value="{{ card.value }}"
-                                      data-card-color="{{ card.color_string }}">
-                                </div>
+                                  data-card-value="{{ card.value }}"
+                                  data-card-color="{{ card.color_string }}"
                             {% else %}
-                                <div class="card card-clickable"
-                                      data-card-value="-1"
-                                      data-card-color="-1">
-                                </div>
+                                  data-card-value="-1"
+                                  data-card-color="-1"
                             {% endif %}
+                            >
+                                {% for turn in game.get_possible_turns(user) %}
+                                    {% if card in turn.cards %}
+                                        <p class="card-turn card-turn-{{ turn.possibility_number }}">
+                                        {% if user == game.current_user %}
+                                            <a href="{{ url_for("game.make_turn",
+                                            game_id=game.id, turn_id=turn.possibility_number) }}">
+                                                {{ turn.turn_string }}
+                                            </a>
+                                        {% else %}
+                                            {{ turn.turn_string }}
+                                        {% endif %}
+                                        </p>
+                                    {% endif %}
+                                {% endfor %}
+                            </div>
+
                             <div class="card-hints">
                                 {% for hint in game.get_hints_for_card(card) %}
                                     <p>{{ hint }}</p>
@@ -63,7 +78,7 @@
     </table>
 
     {% if game.state_string == "created" %}
-        <a href="{{ url_for("game.start_game", id=game.id) }}">Start game</a>
+        <a href="{{ url_for("game.start_game", game_id=game.id) }}">Start game</a>
     {% endif %}
 
     <h2>Debug Stats</h2>
@@ -90,6 +105,10 @@
             <td>{{ game.next_card }}</td>
         </tr>
         <tr>
+            <td>Current user:</td>
+            <td>{{ game.current_user }}</td>
+        </tr>
+        <tr>
             <td>Played turns:</td>
             <td>
                 {% for turn in game.played_turns %}
@@ -100,10 +119,13 @@
         <tr>
             <td>Possible turns:</td>
             <td>
-                {% set turn_id = 0 %}
-                {% for turn in game.get_possible_turns(game.current_user) %}
-                   <p><a href="{{ url_for("game.make_turn", game_id=game.id, turn_id=turn_id) }}">{{ turn }}</a></p>
-                    {% set turn_id = turn_id + 1 %}
+                {% for turn in game.get_possible_turns(user) %}
+                    <p>
+                        <a href="{{ url_for("game.make_turn",
+                        game_id=game.id, turn_id=turn.possibility_number) }}">
+                            {{ turn }}
+                        </a>
+                    </p>
                 {% endfor %}
             </td>
         </tr>

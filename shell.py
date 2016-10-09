@@ -37,10 +37,10 @@ if __name__ == '__main__':
         users = [User.query.filter_by(name=user_name.strip()).one() for user_name in ["test", "test2"]]
 
         new_game = Game(start_deck=start_deck, start_player=start_player,
+                        users=users,
                         start_failures=3,
                         start_hints=10,
                         start_number_of_cards=Game.get_start_number_of_cards_for_players(len(users)))
-        new_game.users = users
 
         db.session.add(new_game)
         db.session.commit()

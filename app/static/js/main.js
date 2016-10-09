@@ -64,6 +64,18 @@ function addBindings() {
                 card.append("<span class='card-color card-text'>" + cardColor + "</span>");
             }
         }
+    }).on("click", function() {
+        $(".card-turn").hide();
+        $(this).children(".card-turn").show();
+    }).mouseleave(function() {
+        $(this).children(".card-turn").hide();
+    });
+
+    $(".card-turn").hide().mouseenter(function() {
+        var turn_id = this.className.split(/\s+/).filter(function(x) { return x.startsWith("card-turn-"); });
+        $("." + turn_id).parent().addClass("selected");
+    }).mouseleave(function() {
+        $(".card").removeClass("selected");
     });
 }
 

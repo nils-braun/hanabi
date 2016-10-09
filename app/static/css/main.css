@@ -169,11 +169,11 @@ body {
     cursor: pointer;
 }
 
-.card.card-clickable:hover {
+.card.card-clickable:hover, .card.selected {
     box-shadow: 0 0 10px black;
 }
 
-.card::after {
+/*.card::before {
     content: ' ';
     display: block;
     position: absolute;
@@ -184,9 +184,9 @@ body {
     background: url("../../static/img/card_back.png") no-repeat;
     background-size: cover;
     background-clip: border-box;
-}
+}*/
 
-.card.card-back::after {
+.card.card-back::before {
     opacity: 0.2;
 }
 
@@ -202,6 +202,14 @@ body {
                  -1px  1px 5px black,
                  -1px -1px 5px black;
     cursor: default;
+}
+
+.card > .card-turn {
+    z-index: 1;
+}
+
+.card-turn:hover {
+    font-weight: bold;
 }
 
 .card.card-clickable > .card-text {
@@ -238,6 +246,7 @@ body {
 }
 
 .card > .card-hints {
+    width: 170px;
     z-index: 2;
     position: absolute;
     top: 300px;

@@ -14,7 +14,7 @@
         <tbody>
             {% if current_games|length > 0 %}
                 {% for number, user_game in current_games %}
-                    <tr onclick="window.location = '{{ url_for("game.game", id=user_game.game.id) }}'">
+                    <tr onclick="window.location = '{{ url_for("game.game", game_id=user_game.game.id) }}'">
                         <td>{{ number }}</td>
                         <td>{{ user_game.game.started }}</td>
                         <td>{{ user_game.game.users }}</td>
